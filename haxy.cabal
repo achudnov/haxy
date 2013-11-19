@@ -5,12 +5,21 @@ Description:         A library for writing HTTP proxy servers with the focus on 
 License:             BSD3
 License-file:        LICENSE
 Author:              Andrey Chudnov
-Maintainer:          oss@chudnov.com
+Maintainer:          Andrey Chudnov <oss@chudnov.com>
 Copyright:           (c) 2012-2013 Stevens Institute of Technology
 Category:            Web
 Build-type:          Simple
 Stability:           Stable
 Cabal-version:       >=1.10
+
+source-repository head
+   type: git
+   location: git://github.com/achudnov/haxy.git
+
+source-repository this
+   type: git
+   location: git://github.com/achudnov/haxy.git
+   tag: 0.9
 
 Library
   Exposed-modules: Network.HTTP.Proxy.Server
