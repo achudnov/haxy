@@ -10,52 +10,80 @@ import Network.HTTP.Server hiding (Response, Request)
 import Network.HTTP.Server.Logger
 import Data.Default.Class
 import Network.HostName
+import Control.Monad.Reader
+
+-- | The proxy monad: Reader (for settings) over IO
+type Proxy s a = ReaderT (Settings s) IO a
+
+type ProxyResponse s = Proxy s (Response s)
 
 -- | Proxy entry-point. Spawns a new proxy server.
 proxyMain :: forall s. HStream s => Settings s -> IO ()
-proxyMain settings = 
-  do hname <- case hostname settings of
-       Nothing -> getHostName
+proxyMain settings = (`runReaderT` settings) $
+  do mhname <- asks hostname
+     hname <- case mhname of
+       Nothing -> lift getHostName
        Just hostn -> return hostn
-     let config = defaultConfig {srvPort = fromInteger $ portnum settings
+     log <- asks logger
+     port <- asks portnum
+     let config = defaultConfig {srvPort = fromInteger port
                                 ,srvHost = hname
-                                ,srvLog  = mylogger}
-     putStrLn "Proxy server started on port 3128\n"
-     serverWith config (proxyHandler settings)
-     
-mylogger = stdLogger
+                                ,srvLog  = log}
+     myLogInfo $ "Proxy server started on port " ++ (show port)
+     lift $ serverWith config (proxyHandler settings)
+
+myLogInfo :: String -> Proxy s ()
+myLogInfo s = asks logger >>= \l -> lift (logInfo l 0 s)
+
+myLogWarning :: String -> Proxy s ()
+myLogWarning s = asks logger >>= \l -> lift (logWarning l s)
+
+myLogError :: String -> Proxy s ()
+myLogError s = asks logger >>= \l -> lift (logError l s)
 
 proxyHandler :: HStream s => Settings s -> Handler s
-proxyHandler settings _ _ request = 
+proxyHandler settings _ _ request = (`runReaderT` settings) $ do
   -- check that the request is authorized
-  isAuthorized settings request >>= 
-  \authorized -> if authorized then processRequest settings request
-                 else errorProxyUnauthorized
-                      
--- |Processes the request; this is the main proxy procedure                     
-processRequest :: HStream s => Settings s -> Request s -> IO (Response s)
+  myLogInfo "Checking request authorization"
+  authorized <- lift $ isAuthorized settings request
+  if authorized then processRequest settings request
+                else do myLogWarning $ "Rejecting an unauthorized request: "
+                           ++ (show request)
+                        errorProxyUnauthorized
+
+-- | Processes the request; this is the main proxy procedure
+processRequest :: HStream s => Settings s -> Request s -> ProxyResponse s
 processRequest settings request = do
   -- modify the request
-  modRequest <- requestModifier settings request
+  myLogInfo "Modifying the request"
+  modRequest <- lift $ requestModifier settings request
   -- check the cache
-  mCachedResponse <- queryCache (cache settings) modRequest
+  myLogInfo "Querying cache"
+  mCachedResponse <- lift $ queryCache (cache settings) modRequest
   case mCachedResponse of
     -- found in cache: return
-    Just response -> return response
+    Just response -> do
+      myLogInfo "Cache hit: returning cached response"
+      return response
     -- not found: fetch it from a remote server, invoke the
     -- 'responseModifier' hook, record in cache and return
-    Nothing       -> do 
+    Nothing       -> do
+      myLogInfo "Cache miss: forwarding the request"
       response <- fetch request
-      modResponse <- responseModifier settings request response
-      recordInCache (cache settings) request modResponse 
+      myLogInfo "Modifying the response"
+      modResponse <- lift $ responseModifier settings request response
+      myLogInfo "Caching the modified response"
+      lift $ recordInCache (cache settings) request modResponse 
       return modResponse
       
-fetch :: HStream s => Request s -> IO (Response s)
+fetch :: HStream s => Request s -> ProxyResponse s
 fetch request = do
-  result <- simpleHTTP request
+  result <- lift $ simpleHTTP request
   case result of 
-    Left err  -> do putStrLn ("Connection error: " ++ show err)
-                    errorInternalServerError
+    Left err  -> do myLogError $
+                      "Connection error while fetching an external resource: "
+                      ++ show err
+                    lift errorInternalServerError
     Right rsp -> return rsp
     
 -- | Proxy server settings                
@@ -75,8 +103,9 @@ data Settings s =
            ,isAuthorized     :: Request s -> IO Bool
             -- ^ Authorization function. Allows denying certain
             -- requests. Defaults to allowing all requests
-           ,logger           :: String -> IO ()
-            -- ^ A logging function. The default is no logging.
+           ,logger           :: Logger
+            -- ^ A logging function. The default is 'stdLogger' from
+            -- http-server.
            ,portnum          :: Integer
             -- ^ Proxy server port number; default is 3128
            ,hostname         :: Maybe String
@@ -89,7 +118,7 @@ instance Default (Settings s) where
                  ,responseModifier = \_ -> return
                  ,cache            = def
                  ,isAuthorized     = return . const True
-                 ,logger           = \_ -> return ()
+                 ,logger           = stdLogger
                  ,portnum          = 3128
                  ,hostname         = Nothing}
 
@@ -112,7 +141,7 @@ errorInternalServerError = return $ err_response InternalServerError
 
 -- |A generic 407 response. TODO: RFC 2068 requres to send
 -- Proxy-Authenticate header with this response code
-errorProxyUnauthorized :: HStream s => IO (Response s)
+errorProxyUnauthorized :: HStream s => ProxyResponse s
 errorProxyUnauthorized = return $ err_response ProxyAuthenticationRequired
 
 -- |A generic 400 response
