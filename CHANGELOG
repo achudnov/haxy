@@ -1,2 +1,10 @@
+=1.0=
+* Changed the settings to use the Logger from http-server.
+* The default logger is now http-server's default logger.
+* Added extensive event logging.
+
+=0.9.1=
+* Packaging fixes
+
 =0.9=
-Initial release.
+* Initial release.
