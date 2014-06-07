@@ -13,6 +13,8 @@ Category:            Web
 Build-type:          Simple
 Stability:           Stable
 Cabal-version:       >=1.10
+Extra-Source-Files:  CHANGELOG
+Tested-with:         GHC==7.6.3, GHC==7.4.2, GHC==7.8.2
 
 source-repository head
    type: git
@@ -34,14 +36,3 @@ Library
                , hostname     >= 1.0 && < 2
                , mtl          == 2.*
   Default-Language: Haskell2010
-
-Executable simple-proxy
-   Main-Is: test/IdProxy.hs
-   Build-Depends: base         >= 4.3.1.0 && < 5
-                , bytestring   >= 0.9 && < 0.11
-                , data-default-class >= 0.0.1 && < 0.1
-                , hostname     >= 1.0 && < 2
-                , http-server  >= 1.0.3 && < 1.1
-                , HTTP         >= 4000.2.0 && < 5000
-                , mtl          == 2.*
-   Default-Language: Haskell2010
