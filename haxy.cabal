@@ -27,7 +27,7 @@ source-repository this
 
 Library
   Exposed-modules: Network.HTTP.Proxy.Server
-  Build-depends: http-server  >= 1.0.4 && < 1.1
+  Build-depends: http-server  >= 1.0.6 && < 1.1
                , HTTP         >= 4000.2.0 && < 5000
                , base         >= 4.3.1.0 && < 5
                , url          >= 2.1.2 && < 2.2
