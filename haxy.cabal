@@ -1,5 +1,5 @@
 Name:                haxy
-Version:             1.0
+Version:             1.0.1
 Synopsis:            A simple HTTP proxy server library
 Description:         A library for writing HTTP proxy servers with the focus on simplicity, flexibility and modularity. Allows arbitrary transformations on requests and responses and custom caching methods. It's up to the user to make sure that the message transformations are consistent with the HTTP specification. Note that the package versions follow Semantic Versioning model (semver.org).
 License:             BSD3
@@ -8,7 +8,7 @@ Author:              Andrey Chudnov
 Maintainer:          Andrey Chudnov <oss@chudnov.com>
 Homepage:            http://github.com/achudnov/haxy
 Bug-reports:         http://github.com/achudnov/haxy/issues
-Copyright:           (c) 2012-2014 Stevens Institute of Technology
+Copyright:           (c) 2012-2015 Stevens Institute of Technology
 Category:            Web
 Build-type:          Simple
 Stability:           Stable
@@ -23,7 +23,7 @@ source-repository head
 source-repository this
    type: git
    location: git://github.com/achudnov/haxy.git
-   tag: 1.0
+   tag: 1.0.1
 
 Library
   Exposed-modules: Network.HTTP.Proxy.Server

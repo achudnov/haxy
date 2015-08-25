@@ -1,3 +1,6 @@
+=1.0.1=
+* Fixed a bug where request is bypassed. Thanks Scott Peter Johnson!
+
 =1.0=
 * Changed the settings to use the Logger from http-server.
 * The default logger is now http-server's default logger.
