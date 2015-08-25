@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 -- | A library for programming custom proxy servers.
-module Network.HTTP.Proxy.Server (proxyMain 
+module Network.HTTP.Proxy.Server (proxyMain
                                  ,Settings (..)
                                  ,Cache (..)
                                  ,Default(..)) where
@@ -69,25 +69,25 @@ processRequest settings request = do
     -- 'responseModifier' hook, record in cache and return
     Nothing       -> do
       myLogInfo "Cache miss: forwarding the request"
-      response <- fetch request
+      response <- fetch modRequest
       myLogInfo "Modifying the response"
       modResponse <- lift $ responseModifier settings request response
       myLogInfo "Caching the modified response"
-      lift $ recordInCache (cache settings) request modResponse 
+      lift $ recordInCache (cache settings) request modResponse
       return modResponse
-      
+
 fetch :: HStream s => Request s -> ProxyResponse s
 fetch request = do
   result <- lift $ simpleHTTP request
-  case result of 
+  case result of
     Left err  -> do myLogError $
                       "Connection error while fetching an external resource: "
                       ++ show err
                     lift errorInternalServerError
     Right rsp -> return rsp
-    
--- | Proxy server settings                
-data Settings s = 
+
+-- | Proxy server settings
+data Settings s =
   Settings {requestModifier  :: Request s -> IO (Request s)
             -- ^ A function for modifying requests. Will be called for
             -- each request received; the modified request will be
@@ -134,7 +134,7 @@ data Cache s = Cache {queryCache :: Request s -> IO (Maybe (Response s))
 instance Default (Cache s) where
   def = Cache {queryCache = return . const Nothing
               ,recordInCache = \_ -> return . const ()}
-        
+
 -- |A generic 500 response
 errorInternalServerError :: HStream s => IO (Response s)
 errorInternalServerError = return $ err_response InternalServerError
