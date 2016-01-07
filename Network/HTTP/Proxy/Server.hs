@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 -- | A library for programming custom proxy servers.
 module Network.HTTP.Proxy.Server (proxyMain
+                                 ,proxyMain_
                                  ,Settings (..)
                                  ,Cache (..)
                                  ,Default(..)) where
@@ -11,6 +12,7 @@ import Network.HTTP.Server.Logger
 import Data.Default.Class
 import Network.HostName
 import Control.Monad.Reader
+import Control.Concurrent.MVar (MVar,newEmptyMVar)
 
 -- | The proxy monad: Reader (for settings) over IO
 type Proxy s a = ReaderT (Settings s) IO a
@@ -19,7 +21,12 @@ type ProxyResponse s = Proxy s (Response s)
 
 -- | Proxy entry-point. Spawns a new proxy server.
 proxyMain :: forall s. HStream s => Settings s -> IO ()
-proxyMain settings = (`runReaderT` settings) $
+proxyMain settings = newEmptyMVar >>= proxyMain_ settings
+
+-- | Proxy entry-point. Spawns a new proxy server.
+-- When the proxy is initalized, signal a waiting thread by putting on the semaphore.
+proxyMain_ :: forall s. HStream s => Settings s -> MVar () -> IO ()
+proxyMain_ settings ready = (`runReaderT` settings) $
   do mhname <- asks hostname
      hname <- case mhname of
        Nothing -> lift getHostName
@@ -30,7 +37,7 @@ proxyMain settings = (`runReaderT` settings) $
                                 ,srvHost = hname
                                 ,srvLog  = log}
      myLogInfo $ "Proxy server started on port " ++ (show port)
-     lift $ serverWith config (proxyHandler settings)
+     lift $ serverWith_ config (proxyHandler settings) ready
 
 myLogInfo :: String -> Proxy s ()
 myLogInfo s = asks logger >>= \l -> lift (logInfo l 0 s)

@@ -1,0 +1,8 @@
+flags: {}
+extra-package-dbs: []
+packages:
+- '.'
+- '../http-server'
+extra-deps:
+- mime-0.4.0.2
+resolver: lts-3.12
